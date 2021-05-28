@@ -1,5 +1,10 @@
 import java.util.*;
 import java.io.File; 
+import java.text.DateFormat; 
+import java.text.SimpleDateFormat;
+import java.util.Date; 
+import java.util.Calendar; 
+
 class Rename{
 	
 	// scan for -help command, if found, exit program and ignore all other options
@@ -29,7 +34,7 @@ class Rename{
 		       return "p"; 
 		} else if (s.equals("-s") || s.equals("-suffix")) {
 		       return "s"; 
-	      	} else if (s.equals("-r") || s.equals("replace")) {
+	      	} else if (s.equals("-r") || s.equals("-replace")) {
 		       return "r"; 
 	      	} else {
 	 		return "N"; // return None
@@ -47,10 +52,25 @@ class Rename{
 		return ss.equals("f") || ss.equals("p") || ss.equals("s")
 		       	|| ss.equals("r"); 
 	}	
+
+	public static String check_dt(String date, String time, String arg) {
+		if (arg.equals("@time")) {
+			return time; 
+		} else if (arg.equals("@date")) {
+			return date; 
+		} 
+		return arg; 
+	}
 	
 	// returns false if input has errors and program must terminate
 	public static Boolean process_args(String args[], HashMap<String, String> files, ArrayList<String> prefix, 
 			ArrayList<String> suffix, ArrayList <String> replace, ArrayList <String> order) {
+		// data for @date and @time
+		Date cur_time = Calendar.getInstance().getTime(); 
+		DateFormat format_d = new SimpleDateFormat("MM-dd-yyyy"); 
+		String cur_d = format_d.format(cur_time); 
+		DateFormat format_t = new SimpleDateFormat("hh-mm-ss"); 
+		String cur_t = format_t.format(cur_time); 
 		// contains fields f, p, s, r, h
 		HashMap<String, Boolean> input_args = new HashMap<String, Boolean>();
 		// each input can only be used onced
@@ -60,7 +80,8 @@ class Rename{
 		input_args.put("r", false); 
 		int args_len = args.length; 
 		int args_loc = 0; 
-		String input; 
+		String input;
+	        Boolean option_specified = false; 	
 		while (args_loc < args_len) {
 			input = simplify_option(args[args_loc]); 
 			if (is_option(input) && input_args.get(input) == false){
@@ -85,25 +106,28 @@ class Rename{
 			} else if (input.equals("p")) {
 				order.add("p"); 
 				args_loc++; // skip over -p
+				option_specified = true; 
 				while((args_loc < args_len) && !is_option_raw_args(args[args_loc])){
-					prefix.add(args[args_loc]); 
+					prefix.add(check_dt(cur_d, cur_t, args[args_loc])); 
 					args_loc++;
 				}
 				args_loc--; 
 			} else if (input.equals("s")){
 				order.add("s");
 				args_loc++; // skip over -s
+				option_specified = true; 
 				while((args_loc < args_len) && !is_option_raw_args(args[args_loc])){
-					suffix.add(args[args_loc]); 
+					suffix.add(check_dt (cur_d, cur_t, args[args_loc])); 
 					args_loc++;  
 				}
 				args_loc--; 
 			} else if (input.equals("r")){
 				order.add("r");
 				args_loc++; // skip over -r
+				option_specified = true; 
 				int count = 0; 
 				while((count < 2) && (args_loc < args_len) && !is_option_raw_args(args[args_loc])){
-					replace.add(args[args_loc]); 
+					replace.add(check_dt (cur_d, cur_t, args[args_loc]));
 					args_loc++;
 				        count++; 
 				}
@@ -119,11 +143,27 @@ class Rename{
 
 			args_loc++; 
 		}
-		
+		// error checking
+		if (files.size() == 0) {
+			System.out.println("No filename provided"); 
+		        return false; 	
+		} 
+		if (!option_specified) {
+			System.out.println("Filename provided, no option specified");
+			return false; 
+		}
+		if (input_args.get("p") && prefix.size() == 0) {
+			System.out.println("Valid option -prefix, but required value is missing"); 
+			return false; 
+		} 
+		if (input_args.get("s") && suffix.size() == 0) {
+			System.out.println("Valid option -suffix, but required value is missing"); 
+			return false; 
+		}	
 		return true; 
 	}
 
-	public static void main (String args[]){
+	public static void main (String args[]){	
 		HashMap<String, String> files = new HashMap<String, String>(); 
 		ArrayList<String> suffix = new ArrayList<String>(); 
 		ArrayList<String> prefix = new ArrayList<String>(); 
@@ -141,7 +181,7 @@ class Rename{
 			cur_file_name = (String) f.getKey(); 
 			temp = new File(cur_file_name); 
 			if (!temp.exists()) {
-				System.out.println(cur_file_name + " not found"); 
+				System.out.println("File name provided, but " + cur_file_name + " not found"); 
 				file_not_found = true;  
 			}
 		}
@@ -169,12 +209,14 @@ class Rename{
 				}
 			} else { // option is replace
 				String match_str = replace.get(0);
-				String replace_str = replace.get(1); 
+				String replace_str = replace.get(1);
+			      // System.out.println(match_str); 
+		       //	System.out.println(replace_str); 	       
 				for (Map.Entry f: files.entrySet()) {
 					cur_file_name = (String) f.getKey();
 					new_file_name = (String) f.getValue();
 					if (!new_file_name.contains(match_str)) {
-						System.out.println(new_file_name + "(converted from original name " +
+						System.out.println("Warning: " + new_file_name + "(converted from original name " +
 								cur_file_name + ") does not have substring " + match_str + " for replacement"); 
 					} else {
 						new_file_name = new_file_name.replaceAll(match_str, replace_str);  
