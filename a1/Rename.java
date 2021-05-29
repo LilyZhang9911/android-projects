@@ -209,8 +209,6 @@ class Rename{
 			} else { // option is replace
 				String match_str = replace.get(0);
 				String replace_str = replace.get(1);
-			      // System.out.println(match_str); 
-		       //	System.out.println(replace_str); 	       
 				for (Map.Entry f: files.entrySet()) {
 					cur_file_name = (String) f.getKey();
 					new_file_name = (String) f.getValue();
