@@ -42,9 +42,8 @@ class Rename{
 	}		
 
 	public static Boolean is_option_raw_args(String s) {
-		String ss = simplify_option(s); 
-		return ss.equals("f") || ss.equals("p") || ss.equals("s")
-		       	|| ss.equals("r"); 
+		char c = s.charAt(0); 
+		return c=='-';  
 	}
 
 
