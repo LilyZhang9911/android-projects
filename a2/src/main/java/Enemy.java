@@ -5,8 +5,11 @@ import java.util.Objects;
 public class Enemy {
     ImageView img;
     Boolean killed;
+    int initial_x, initial_y;
     int type;
     Enemy(int type, int x, int y) {
+        initial_x = x;
+        initial_y = y;
         if (type == 1) { // purple
             img = new ImageView(new Image (Objects.requireNonNull(getClass().getResourceAsStream("images/enemy1.png"))));
         } else if (type == 2) { // blue
@@ -21,6 +24,14 @@ public class Enemy {
         killed = false;
         this.type = type;
     }
+
+    public void reset () {
+        img.setX(initial_x);
+        img.setY(initial_y);
+        img.setVisible(true);
+        killed = false;
+    }
+
     public void move (double dx, double dy) {
         img.setX(img.getX() + dx);
         img.setY(img.getY() + dy);

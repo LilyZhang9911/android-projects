@@ -25,6 +25,10 @@ public class Gameplay {
     private static Text score = new Text();
     private static Text lives = new Text();
     private static Text level = new Text();
+    private static final int GREEN_POINTS = 15;
+    private static final int PURPLE_POINTS = 10;
+    private static final int PINK_POINTS = 5;
+
 
     // gameplay elements
     private static Scene game_scene;
@@ -33,26 +37,31 @@ public class Gameplay {
     private static ArrayList<PlayerBullet> p_bullets;  // max of 3 bullets
     private static DIR alien_move = DIR.RIGHT;
     private static Player player;
-    private static DIR player_dir;
+    private static DIR player_dir = DIR.NONE;
     private static Boolean fire = false;
 
     // gameplay stats
-    private static Boolean game_over = false;
-    private static Boolean game_won = false;
+    static Boolean game_over = false;
+    static Boolean game_won = false;
     private static int enemies_killed = 0;
     private static Boolean respawn = false;
     private static final int ENEMIES_COUNT = 50;
-    private static double PLAYER_SPEED = 1.0;
+    private static final double PLAYER_SPEED = 1.0;
     private static final int MAX_ENEMY_BULLET = 4;
     private static final int MAX_PLAYER_BULLET = 4;
     private static int cur_bullets = 0; // keep track of all active enemy bullets
     private static final int ENEMY_FIRE_RATE = 1000;
-    private static double ENEMY_BULLET_SPEED = 0.4;
-    private static double PLAYER_BULLET_SPEED = 0.4;
-    private static final int PLAYER_FIRE_RATE = 150;
+    private static final double ENEMY_BULLET_SPEED = 0.4;
+    private static final double PLAYER_BULLET_SPEED = 0.4;
+    private static final int PLAYER_FIRE_RATE = 250;
     private static int player_cur_bullets = 0; // keep track of active player bullets
 
-    static double ENEMY_SPEED = 0.3; // initial = 0.3, + 0.05 when on enemy is killed
+    private static double INCREASE_SPEED = 0; // increase of speed when one alien is killed
+
+    private static final double LV1_ENEMY_SPEED = 0.3; // initial = 0.3, + 0.05 when on enemy is killed
+    private static final double LV2_ENEMY_SPEED = 0.5;
+    private static final double LV3_ENEMY_SPEED = 0.7;
+    static double ENEMY_SPEED = LV1_ENEMY_SPEED;
 
     // dimensions
     private static final double SCREEN_WIDTH = 800;
@@ -158,10 +167,51 @@ public class Gameplay {
         game_scene = new Scene(gameplay_elements, 800, 600);
     }
 
+    public static void restart () {
+        reset_scene();
+    }
+
+    public static void reset_scene () {
+        for (int i = 0; i < ENEMIES_COUNT; i++) {
+            enemies.get(i).reset();
+        }
+        // reset all bullets
+        for (int i = 0; i < MAX_ENEMY_BULLET; i++) {
+            e_bullets.get(i).destroy_bullet();
+        }
+        for (int i = 0; i < MAX_PLAYER_BULLET; i++) {
+            p_bullets.get(i).destroy_bullet();
+        }
+        player.reset();
+        // update level display
+        level.setText("Level: " + LEVEL);
+
+        // set game states
+        alien_move = DIR.RIGHT;
+        player_dir = DIR.NONE;
+        enemies_killed = 0;
+        cur_bullets = 0;
+        player_cur_bullets = 0;
+        if (LEVEL == 1) {
+            ENEMY_SPEED = LV1_ENEMY_SPEED;
+        } else if (LEVEL == 2) {
+            ENEMY_SPEED = LV2_ENEMY_SPEED;
+        } else {
+            ENEMY_SPEED = LV3_ENEMY_SPEED;
+        }
+    }
+
     public static void move_enemy () {
         // check for game over condition
         // last alien shows bottom row
-        if (enemies.get(0).getY() >= SCREEN_HEIGHT - ENEMY_HEIGHT - PLAYER_HEIGHT) {
+        Enemy lowest_active = enemies.get(0);
+        for (int i = ENEMIES_COUNT - 1; i >= 0; i--) {
+            if (!enemies.get(i).killed) {
+                lowest_active = enemies.get(i);
+                break;
+            }
+        }
+        if (lowest_active.getY() >= SCREEN_HEIGHT - ENEMY_HEIGHT - PLAYER_HEIGHT) {
             game_over = true;
             return;
         }
@@ -178,6 +228,9 @@ public class Gameplay {
                 }
                 // switch direction
                 alien_move = DIR.LEFT;
+                // fire bullet
+                Random rand = new Random();
+                set_bullet(enemies.get(rand.nextInt(50)));
             }
         } else { // aliens moving to the left
             // 0th element is the left most alien
@@ -192,6 +245,9 @@ public class Gameplay {
                 }
                 // switch direction
                 alien_move = DIR.RIGHT;
+                // fire bullet
+                Random rand = new Random();
+                set_bullet(enemies.get(rand.nextInt(50)));
             }
         }
     }
@@ -240,7 +296,7 @@ public class Gameplay {
             cur = e_bullets.get(i);
             // contains bottom left or bottom right point
             if (cur.in_use && (player.img.contains(cur.getX(), cur.getY() + BULLET_HEIGHT)||
-                            player.img.contains(cur.getX() + ENEMY_BULLET_WIDTH, cur.getY() + BULLET_HEIGHT))) {
+                    player.img.contains(cur.getX() + ENEMY_BULLET_WIDTH, cur.getY() + BULLET_HEIGHT))) {
                 hit = true;
                 // remove current bullet
                 e_bullets.get(i).destroy_bullet();
@@ -264,12 +320,26 @@ public class Gameplay {
             if (cur.in_use) {
                 // check collision with each enemy starting from the bottom
                 for (int j = ENEMIES_COUNT - 1; j >= 0; j--) {
+                    // if hit
                     if (!enemies.get(j).killed && (enemies.get(j).img.contains(cur.getX(), cur.getY()) ||
                             enemies.get(j).img.contains(cur.getX() + PLAYER_BULLET_WIDTH, cur.getY()))) {
+                        // remove current bullet
                         cur.destroy_bullet();
                         player_cur_bullets--;
+                        // kill enemy
                         enemies.get(j).setKilled();
                         enemies_killed++;
+                        // incrase enemy speed
+                        ENEMY_SPEED += INCREASE_SPEED;
+                        // score points
+                        if (j < 10) {
+                            SCORE += GREEN_POINTS;
+                        } else if (j < 30) {
+                            SCORE += PURPLE_POINTS;
+                        } else {
+                            SCORE += PINK_POINTS;
+                        }
+                        // consider game won case
                         if (enemies_killed == ENEMIES_COUNT) {
                             game_won = true;
                         }
@@ -296,7 +366,8 @@ public class Gameplay {
             moved = false;
             for (int i = 0; i < MAX_ENEMY_BULLET; i++) {
                 cur = e_bullets.get(i);
-                if (cur.in_use && player.img.contains(cur.getX(), cur.getY())) {
+                if (cur.in_use && (player.img.contains(cur.getX(), cur.getY() + BULLET_HEIGHT)||
+                        player.img.contains(cur.getX() + ENEMY_BULLET_WIDTH, cur.getY() + BULLET_HEIGHT))) {
                     player.move(8); // since bullet width is 8
                     moved = true;
                     break;
@@ -334,16 +405,21 @@ public class Gameplay {
         }
     }
 
-    public static void start_game (Stage stage, int start_level) {
+    public static void start_game (Stage stage, int start_level, Scene intro_scene) {
         LEVEL = start_level;
+        if (LEVEL == 1) {
+            ENEMY_SPEED = LV1_ENEMY_SPEED;
+        } else if (LEVEL == 2) {
+            ENEMY_SPEED = LV2_ENEMY_SPEED;
+        } else {
+            ENEMY_SPEED = LV3_ENEMY_SPEED;
+        }
         LIVES = 3;
         SCORE = 0;
         init_top_row_text();
         init_enemies();
         init_bullets();
         init_gameplay_scene(enemies);
-
-        // ADD: SET SPEED BASED ON LEVEL
 
         AnimationTimer timer = new AnimationTimer() {
             @Override
@@ -352,9 +428,15 @@ public class Gameplay {
                     this.stop();
                     return;
                 } else if (game_won) {
-                    System.out.println("game won!");
-                    this.stop();
-                    return;
+                    LEVEL++;
+                    if (LEVEL == 4) {
+                        System.out.println("FINAL WIN!");
+                        this.stop();
+                        return;
+                    } else {
+                        reset_scene();
+                        game_won = false;
+                    }
                 }
                 if (respawn) {
                     respawn(); // respawn() will set respawn = false
@@ -368,7 +450,6 @@ public class Gameplay {
                 }
             }
         };
-
         // set input for player movement
         game_scene.setOnKeyPressed(event -> {
             switch (event.getCode()) {
@@ -390,11 +471,25 @@ public class Gameplay {
             player_dir = DIR.NONE;
             fire = false;
         });
+
+        // timer for player fire
+        Timer player_t = new Timer();
+        player_t.schedule (new TimerTask() {
+            @Override
+            public void run() {
+                if (game_won || game_over) return;
+                if (fire) {
+                    fire_bullet();
+                }
+            }
+        }, 0, PLAYER_FIRE_RATE);
+
         // timer for spawning enemy bullets
         Timer t = new Timer();
         t.schedule (new TimerTask() {
             @Override
             public void run() {
+                if (game_won || game_over) return;
                 // randomly choose an enemy
                 Random rand = new Random();
                 int index = rand.nextInt(50);
@@ -402,20 +497,11 @@ public class Gameplay {
             }
         }, 0, ENEMY_FIRE_RATE);
 
-        // timer for player fire
-        Timer player_t = new Timer();
-        player_t.schedule (new TimerTask() {
-            @Override
-            public void run() {
-                if (fire) {
-                    fire_bullet();
-                }
-            }
-        }, 0, PLAYER_FIRE_RATE);
-
-        //enemies.get(0).setKilled();
         timer.start();
         stage.setScene(game_scene);
+        stage.setOnCloseRequest(event -> {
+            System.exit(0);
+        });
         stage.show();
     }
 }

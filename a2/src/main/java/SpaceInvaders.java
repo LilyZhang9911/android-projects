@@ -66,11 +66,11 @@ public class SpaceInvaders extends Application {
         Gameplay g = new Gameplay();
         intro_scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.DIGIT1 || event.getCode() == KeyCode.ENTER) {
-                g.start_game(stage, 1);
+                g.start_game(stage, 1, intro_scene);
             } else if (event.getCode() == KeyCode.DIGIT2) {
-                g.start_game(stage, 2);
+                g.start_game(stage, 2, intro_scene);
             } else if (event.getCode() == KeyCode.DIGIT3) {
-                g.start_game(stage, 3);
+                g.start_game(stage, 3, intro_scene);
             } else if (event.getCode() == KeyCode.Q) {
                 System.exit(0);
             }
