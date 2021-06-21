@@ -1,16 +1,11 @@
 import javafx.application.Application;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
-import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
-import javafx.scene.paint.Paint;
 import javafx.scene.text.TextAlignment;
 import javafx.stage.Stage;
 import javafx.scene.image.ImageView;
@@ -19,21 +14,13 @@ import javafx.scene.layout.Pane;
 import javafx.scene.text.Text;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import java.io.File;
-
 
 public class SpaceInvaders extends Application {
 
-    @Override
-    public void start(Stage stage) {
-        stage.setTitle ("Space Invaders");
-        stage.setResizable(false);
-
-        // intro scene
+    static Scene intro_page (Image logo_img) {
         Pane intro_elements = new Pane();
         intro_elements.setBackground(new Background(new BackgroundFill(Color.WHITE, CornerRadii.EMPTY, Insets.EMPTY)));
-        // logo
-        Image logo_img = new Image (getClass().getResourceAsStream("images/logo.png"));
+
         ImageView logo = new ImageView(logo_img);
         logo.setX(150);
         logo.setY(30);
@@ -63,16 +50,31 @@ public class SpaceInvaders extends Application {
         intro_elements.getChildren().add(name);
 
         Scene intro_scene = new Scene(intro_elements, 800, 600);
-        stage.setScene(intro_scene);
-        stage.show();
+        return intro_scene;
+    }
 
-          /*  // scene one
-            Button button1 = new Button("Go To Scene2");
-            StackPane root1 = new StackPane(button1);
-            root1.setBackground(new Background(new BackgroundFill(Color.DARKRED, CornerRadii.EMPTY, Insets.EMPTY)));
-            Scene scene1 = new Scene(root1, 300, 150); */
+    @Override
+    public void start(Stage stage) {
+        stage.setTitle ("Space Invaders");
+        stage.setResizable(false);
 
+
+        Image logo_img = new Image (getClass().getResourceAsStream("images/logo.png"));
+        Scene intro_scene = intro_page(logo_img);
         stage.setScene(intro_scene);
+
+        Gameplay g = new Gameplay();
+        intro_scene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.DIGIT1 || event.getCode() == KeyCode.ENTER) {
+                g.start_game(stage, 1);
+            } else if (event.getCode() == KeyCode.DIGIT2) {
+                g.start_game(stage, 2);
+            } else if (event.getCode() == KeyCode.DIGIT3) {
+                g.start_game(stage, 3);
+            } else if (event.getCode() == KeyCode.Q) {
+                System.exit(0);
+            }
+        });
         stage.show();
     }
 }
