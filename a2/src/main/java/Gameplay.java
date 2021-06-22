@@ -1,25 +1,35 @@
+import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
-import javafx.scene.paint.Color;
-import javafx.stage.Stage;
 import javafx.scene.layout.Pane;
-import javafx.scene.text.Text;
+import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+import javafx.stage.Stage;
+
 import java.util.ArrayList;
-import javafx.animation.AnimationTimer;
-import java.util.TimerTask;
-import java.util.Timer;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
+import javafx.scene.image.ImageView;
+import javafx.scene.image.Image;
 
 public class Gameplay {
     enum DIR {LEFT, RIGHT, NONE}
+    private static Stage cur_stage;
+    private Scene intro_scene;
+    private Scene game_over_scene;
+    private Scene game_won_scene;
+    private Text score_board;
+    private Text game_end_title;
+    static int highest_score = 0;
 
     // top row stats
-    private static int SCORE = 0;
+    static int SCORE = 0;
     private static int LIVES = 3;
     private static int LEVEL = 1;
     private static Text score = new Text();
@@ -28,7 +38,6 @@ public class Gameplay {
     private static final int GREEN_POINTS = 15;
     private static final int PURPLE_POINTS = 10;
     private static final int PINK_POINTS = 5;
-
 
     // gameplay elements
     private static Scene game_scene;
@@ -43,7 +52,7 @@ public class Gameplay {
     // gameplay stats
     static Boolean game_over = false;
     static Boolean game_won = false;
-    private static int enemies_killed = 0;
+    private static int enemies_killed = 0; // SET BACK TO 0
     private static Boolean respawn = false;
     private static final int ENEMIES_COUNT = 50;
     private static final double PLAYER_SPEED = 1.0;
@@ -405,7 +414,33 @@ public class Gameplay {
         }
     }
 
-    public static void start_game (Stage stage, int start_level, Scene intro_scene) {
+    public void show_game_over() {
+        if (SCORE > highest_score) {
+            highest_score = SCORE; // update highest score
+        }
+        cur_stage.setScene(game_over_scene);
+        game_end_title.setText("GAME OVER!");
+        score_board.setText("Final Score: " + SCORE + "\nHighest Score: " + highest_score);
+        cur_stage.show();
+    }
+
+    public void show_game_won() {
+        if (SCORE > highest_score) {
+            highest_score = SCORE; // update highest score
+        }
+        cur_stage.setScene(game_over_scene);
+        game_end_title.setText("YOU WIN!");
+        score_board.setText("Final Score: " + SCORE + "\nHighest Score: " + highest_score);
+        cur_stage.show();
+    }
+
+    public void start_game (Stage stage, int start_level, Scene intro_scene, Scene game_over_scene, Text score_data,
+                            Text game_end_title) {
+        cur_stage = stage;
+        this.intro_scene = intro_scene;
+        this.game_over_scene = game_over_scene;
+        this.game_end_title = game_end_title;
+        score_board = score_data;
         LEVEL = start_level;
         if (LEVEL == 1) {
             ENEMY_SPEED = LV1_ENEMY_SPEED;
@@ -420,18 +455,22 @@ public class Gameplay {
         init_enemies();
         init_bullets();
         init_gameplay_scene(enemies);
+        game_over = false;
+        game_won = false;
+        reset_scene(); // reset in case of restart
 
         AnimationTimer timer = new AnimationTimer() {
             @Override
             public void handle (long now) {
                 if (game_over) {
                     this.stop();
+                    show_game_over();
                     return;
                 } else if (game_won) {
                     LEVEL++;
                     if (LEVEL == 4) {
-                        System.out.println("FINAL WIN!");
                         this.stop();
+                        show_game_won();
                         return;
                     } else {
                         reset_scene();
@@ -477,8 +516,7 @@ public class Gameplay {
         player_t.schedule (new TimerTask() {
             @Override
             public void run() {
-                if (game_won || game_over) return;
-                if (fire) {
+                if (!game_won && !game_over && fire) {
                     fire_bullet();
                 }
             }
@@ -489,19 +527,20 @@ public class Gameplay {
         t.schedule (new TimerTask() {
             @Override
             public void run() {
-                if (game_won || game_over) return;
-                // randomly choose an enemy
-                Random rand = new Random();
-                int index = rand.nextInt(50);
-                set_bullet (enemies.get(index));
+                if (!game_won && !game_over) {
+                    // randomly choose an enemy
+                    Random rand = new Random();
+                    int index = rand.nextInt(50);
+                    set_bullet (enemies.get(index));
+                }
             }
         }, 0, ENEMY_FIRE_RATE);
 
         timer.start();
-        stage.setScene(game_scene);
-        stage.setOnCloseRequest(event -> {
+        cur_stage.setScene(game_scene);
+        cur_stage.setOnCloseRequest(event -> {
             System.exit(0);
         });
-        stage.show();
+        cur_stage.show();
     }
 }
