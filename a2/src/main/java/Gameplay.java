@@ -10,7 +10,6 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
@@ -65,11 +64,11 @@ public class Gameplay {
     private static final int PLAYER_FIRE_RATE = 250;
     private static int player_cur_bullets = 0; // keep track of active player bullets
 
-    private static double INCREASE_SPEED = 0; // increase of speed when one alien is killed
+    private static double INCREASE_SPEED = 0.05; // increase of speed when one alien is killed
 
-    private static final double LV1_ENEMY_SPEED = 0.3; // initial = 0.3, + 0.05 when on enemy is killed
-    private static final double LV2_ENEMY_SPEED = 0.5;
-    private static final double LV3_ENEMY_SPEED = 0.7;
+    private static final double LV1_ENEMY_SPEED = 0.5; // initial = 0.3, + 0.05 when on enemy is killed
+    private static final double LV2_ENEMY_SPEED = 0.8;
+    private static final double LV3_ENEMY_SPEED = 1.1;
     static double ENEMY_SPEED = LV1_ENEMY_SPEED;
 
     // dimensions
@@ -174,10 +173,6 @@ public class Gameplay {
         }
 
         game_scene = new Scene(gameplay_elements, 800, 600);
-    }
-
-    public static void restart () {
-        reset_scene();
     }
 
     public static void reset_scene () {
@@ -420,6 +415,7 @@ public class Gameplay {
         }
         cur_stage.setScene(game_over_scene);
         game_end_title.setText("GAME OVER!");
+        game_end_title.setX(260);
         score_board.setText("Final Score: " + SCORE + "\nHighest Score: " + highest_score);
         cur_stage.show();
     }
@@ -430,6 +426,7 @@ public class Gameplay {
         }
         cur_stage.setScene(game_over_scene);
         game_end_title.setText("YOU WIN!");
+        game_end_title.setX(280);
         score_board.setText("Final Score: " + SCORE + "\nHighest Score: " + highest_score);
         cur_stage.show();
     }

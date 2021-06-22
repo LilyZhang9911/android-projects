@@ -14,7 +14,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.text.Text;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.shape.Rectangle;
 
 public class SpaceInvaders extends Application {
 
@@ -38,10 +37,10 @@ public class SpaceInvaders extends Application {
         instructions.setX(220);
         instructions.setY(400);
 
-        Text name = new Text ("Implemented by Lily Zhang for CS349. University of Waterloo, S21");
+        Text name = new Text ("Implemented by Lily Zhang (20709910) for CS349. University of Waterloo, S21");
         name.setFont(Font.font("Verdana", 10));
         //instructions.setTextAlignment(TextAlignment.CENTER);
-        name.setX(230);
+        name.setX(220);
         name.setY(575);
 
         // add children
