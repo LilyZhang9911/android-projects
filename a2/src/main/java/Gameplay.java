@@ -34,7 +34,8 @@ public class Gameplay {
     static int highest_score = 0;
 
     //audio
-    MediaPlayer sound_aliens_moving;
+    private static MediaPlayer sound_aliens_moving = new MediaPlayer(new Media
+            (new File("src/main/resources/sounds/fastinvader1.wav").toURI().toString()));
     private static MediaPlayer sound_explosion = new MediaPlayer(new Media
             (new File("src/main/resources/sounds/explosion.wav").toURI().toString()));
     private static MediaPlayer sound_enemy_killed = new MediaPlayer(new Media
@@ -191,8 +192,6 @@ public class Gameplay {
     }
 
     public void reset_scene () {
-        // start audio
-        sound_aliens_moving.play();
         for (int i = 0; i < ENEMIES_COUNT; i++) {
             enemies.get(i).reset();
         }
@@ -244,6 +243,9 @@ public class Gameplay {
                     enemies.get(i).move(ENEMY_SPEED, 0);
                 }
             } else { // hit the right wall
+                // play audio
+                sound_aliens_moving.seek(Duration.ZERO);
+                sound_aliens_moving.play();
                 // move down
                 for (int i = 0; i < ENEMIES_COUNT; i++) {
                     enemies.get(i).move(0, ROW_HEIGHT);
@@ -261,6 +263,9 @@ public class Gameplay {
                     enemies.get(i).move(-ENEMY_SPEED, 0);
                 }
             } else { // hit the left wall
+                // play audio
+                sound_aliens_moving.seek(Duration.ZERO);
+                sound_aliens_moving.play();
                 // move down
                 for (int i = 0; i < ENEMIES_COUNT; i++) {
                     enemies.get(i).move(0, ROW_HEIGHT);
@@ -436,7 +441,6 @@ public class Gameplay {
     }
 
     public void show_game_over() {
-        sound_aliens_moving.stop();
         if (SCORE > highest_score) {
             highest_score = SCORE; // update highest score
         }
@@ -448,7 +452,6 @@ public class Gameplay {
     }
 
     public void show_game_won() {
-        sound_aliens_moving.stop();
         if (SCORE > highest_score) {
             highest_score = SCORE; // update highest score
         }
@@ -460,13 +463,12 @@ public class Gameplay {
     }
 
     public void start_game (Stage stage, int start_level, Scene intro_scene, Scene game_over_scene, Text score_data,
-                            Text game_end_title, MediaPlayer sound_aliens_moving) {
+                            Text game_end_title) {
         cur_stage = stage;
         this.intro_scene = intro_scene;
         this.game_over_scene = game_over_scene;
         this.game_end_title = game_end_title;
         score_board = score_data;
-        this.sound_aliens_moving = sound_aliens_moving;
         LEVEL = start_level;
 
       /*  // set up audio

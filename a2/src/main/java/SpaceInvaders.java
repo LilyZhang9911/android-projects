@@ -14,10 +14,6 @@ import javafx.scene.layout.Pane;
 import javafx.scene.text.Text;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
-import javafx.scene.media.MediaPlayer;
-import javafx.scene.media.Media;
-import java.io.File;
-
 public class SpaceInvaders extends Application {
 
     static Scene intro_page (Image logo_img) {
@@ -101,11 +97,6 @@ public class SpaceInvaders extends Application {
         stage.setResizable(false);
 
         // audio
-        Media sound = new Media(new File("src/main/resources/sounds/fastinvader1.wav").toURI().toString());
-        MediaPlayer sound_aliens_moving = new MediaPlayer(sound);
-        sound_aliens_moving.setCycleCount(MediaPlayer.INDEFINITE);
-
-
         Image logo_img = new Image (getClass().getResourceAsStream("images/logo.png"));
         Image alien = new Image (getClass().getResourceAsStream("images/enemy3.png"));
         Text score_data = new Text("");
@@ -119,11 +110,11 @@ public class SpaceInvaders extends Application {
         Gameplay g = new Gameplay();
         intro_scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.DIGIT1 || event.getCode() == KeyCode.ENTER) {
-                g.start_game(stage, 1, intro_scene, game_end_scene, score_data, game_end_type, sound_aliens_moving);
+                g.start_game(stage, 1, intro_scene, game_end_scene, score_data, game_end_type);
             } else if (event.getCode() == KeyCode.DIGIT2) {
-                g.start_game(stage, 2, intro_scene, game_end_scene, score_data, game_end_type, sound_aliens_moving);
+                g.start_game(stage, 2, intro_scene, game_end_scene, score_data, game_end_type);
             } else if (event.getCode() == KeyCode.DIGIT3) {
-                g.start_game(stage, 3, intro_scene, game_end_scene, score_data, game_end_type, sound_aliens_moving);
+                g.start_game(stage, 3, intro_scene, game_end_scene, score_data, game_end_type);
             } else if (event.getCode() == KeyCode.Q) {
                 System.exit(0);
             }
@@ -131,11 +122,11 @@ public class SpaceInvaders extends Application {
         // we can access it afterwards System.out.println(g.highest_score);
         game_end_scene.setOnKeyPressed(event -> {
             if (event.getCode() == KeyCode.DIGIT1 || event.getCode() == KeyCode.ENTER) {
-                g.start_game(stage, 1, intro_scene, game_end_scene, score_data, game_end_type, sound_aliens_moving);
+                g.start_game(stage, 1, intro_scene, game_end_scene, score_data, game_end_type);
             } else if (event.getCode() == KeyCode.DIGIT2) {
-                g.start_game(stage, 2, intro_scene, game_end_scene, score_data, game_end_type, sound_aliens_moving);
+                g.start_game(stage, 2, intro_scene, game_end_scene, score_data, game_end_type);
             } else if (event.getCode() == KeyCode.DIGIT3) {
-                g.start_game(stage, 3, intro_scene, game_end_scene, score_data, game_end_type, sound_aliens_moving);
+                g.start_game(stage, 3, intro_scene, game_end_scene, score_data, game_end_type);
             } else if (event.getCode() == KeyCode.Q) {
                 System.exit(0);
             } else if (event.getCode() == KeyCode.I) {
