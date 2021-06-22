@@ -6,6 +6,8 @@ Player.java
  Player
 EnemyBullet.java
  EnemyBullet
+SpaceInvaders.java
+ SpaceInvaders
 Gameplay.java
  Gameplay
  Gameplay$1
@@ -13,5 +15,3 @@ Gameplay.java
  Gameplay$3
  Gameplay$4
  Gameplay$DIR
-SpaceInvaders.java
- SpaceInvaders

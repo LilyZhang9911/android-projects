@@ -1,3 +1,4 @@
+import com.sun.glass.ui.delegate.MenuItemDelegate;
 import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -5,17 +6,22 @@ import javafx.scene.layout.Background;
 import javafx.scene.layout.BackgroundFill;
 import javafx.scene.layout.CornerRadii;
 import javafx.scene.layout.Pane;
+import javafx.scene.media.Media;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
+import javafx.scene.media.MediaPlayer;
+import javafx.util.Duration;
 
 public class Gameplay {
     enum DIR {LEFT, RIGHT, NONE}
@@ -26,6 +32,15 @@ public class Gameplay {
     private Text score_board;
     private Text game_end_title;
     static int highest_score = 0;
+
+    //audio
+    MediaPlayer sound_aliens_moving;
+    private static MediaPlayer sound_explosion = new MediaPlayer(new Media
+            (new File("src/main/resources/sounds/explosion.wav").toURI().toString()));
+    private static MediaPlayer sound_enemy_killed = new MediaPlayer(new Media
+            (new File("src/main/resources/sounds/invaderkilled.wav").toURI().toString()));
+    private static MediaPlayer sound_shoot = new MediaPlayer(new Media
+            (new File("src/main/resources/sounds/shoot.wav").toURI().toString()));
 
     // top row stats
     static int SCORE = 0;
@@ -54,13 +69,13 @@ public class Gameplay {
     private static int enemies_killed = 0; // SET BACK TO 0
     private static Boolean respawn = false;
     private static final int ENEMIES_COUNT = 50;
-    private static final double PLAYER_SPEED = 1.0;
+    private static final double PLAYER_SPEED = 4.0;
     private static final int MAX_ENEMY_BULLET = 4;
     private static final int MAX_PLAYER_BULLET = 4;
     private static int cur_bullets = 0; // keep track of all active enemy bullets
     private static final int ENEMY_FIRE_RATE = 1000;
-    private static final double ENEMY_BULLET_SPEED = 0.4;
-    private static final double PLAYER_BULLET_SPEED = 0.4;
+    private static final double ENEMY_BULLET_SPEED = 2.0;
+    private static final double PLAYER_BULLET_SPEED = 2.0;
     private static final int PLAYER_FIRE_RATE = 250;
     private static int player_cur_bullets = 0; // keep track of active player bullets
 
@@ -175,7 +190,9 @@ public class Gameplay {
         game_scene = new Scene(gameplay_elements, 800, 600);
     }
 
-    public static void reset_scene () {
+    public void reset_scene () {
+        // start audio
+        sound_aliens_moving.play();
         for (int i = 0; i < ENEMIES_COUNT; i++) {
             enemies.get(i).reset();
         }
@@ -186,6 +203,7 @@ public class Gameplay {
         for (int i = 0; i < MAX_PLAYER_BULLET; i++) {
             p_bullets.get(i).destroy_bullet();
         }
+
         player.reset();
         // update level display
         level.setText("Level: " + LEVEL);
@@ -308,6 +326,9 @@ public class Gameplay {
             }
         }
         if (hit) {
+            // play explosion sound
+            sound_explosion.seek(Duration.ZERO);
+            sound_explosion.play();
             LIVES--;
             if (LIVES < 0) {
                 game_over = true;
@@ -327,6 +348,9 @@ public class Gameplay {
                     // if hit
                     if (!enemies.get(j).killed && (enemies.get(j).img.contains(cur.getX(), cur.getY()) ||
                             enemies.get(j).img.contains(cur.getX() + PLAYER_BULLET_WIDTH, cur.getY()))) {
+                        // play sound of enemy killed
+                        sound_enemy_killed.seek(Duration.ZERO);
+                        sound_enemy_killed.play();
                         // remove current bullet
                         cur.destroy_bullet();
                         player_cur_bullets--;
@@ -402,6 +426,8 @@ public class Gameplay {
                 if (!p_bullets.get(i).in_use) {
                     p_bullets.get(i).init_bullet(player);
                     player_cur_bullets++;
+                    sound_shoot.seek(Duration.ZERO);
+                    sound_shoot.play();
                     fire = false; // set back to false after firing
                     break;
                 }
@@ -410,6 +436,7 @@ public class Gameplay {
     }
 
     public void show_game_over() {
+        sound_aliens_moving.stop();
         if (SCORE > highest_score) {
             highest_score = SCORE; // update highest score
         }
@@ -421,6 +448,7 @@ public class Gameplay {
     }
 
     public void show_game_won() {
+        sound_aliens_moving.stop();
         if (SCORE > highest_score) {
             highest_score = SCORE; // update highest score
         }
@@ -432,13 +460,20 @@ public class Gameplay {
     }
 
     public void start_game (Stage stage, int start_level, Scene intro_scene, Scene game_over_scene, Text score_data,
-                            Text game_end_title) {
+                            Text game_end_title, MediaPlayer sound_aliens_moving) {
         cur_stage = stage;
         this.intro_scene = intro_scene;
         this.game_over_scene = game_over_scene;
         this.game_end_title = game_end_title;
         score_board = score_data;
+        this.sound_aliens_moving = sound_aliens_moving;
         LEVEL = start_level;
+
+      /*  // set up audio
+        sound_enemy_killed.setCycleCount(MediaPlayer.INDEFINITE);
+        sound_explosion.setCycleCount(MediaPlayer.INDEFINITE);
+        sound_shoot.setCycleCount(MediaPlayer.INDEFINITE); */
+
         if (LEVEL == 1) {
             ENEMY_SPEED = LV1_ENEMY_SPEED;
         } else if (LEVEL == 2) {
