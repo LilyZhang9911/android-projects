@@ -12,7 +12,6 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
 import javafx.stage.Stage;
-
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Random;
@@ -22,6 +21,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.image.Image;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
+import java.time.LocalDateTime;
 
 public class Gameplay {
     enum DIR {LEFT, RIGHT, NONE}
@@ -63,6 +63,8 @@ public class Gameplay {
     private static Player player;
     private static DIR player_dir = DIR.NONE;
     private static Boolean fire = false;
+    private static int player_last_fire_time = 0;
+    private static int alien_last_fire_time = 0;
 
     // gameplay stats
     static Boolean game_over = false;
@@ -74,10 +76,10 @@ public class Gameplay {
     private static final int MAX_ENEMY_BULLET = 4;
     private static final int MAX_PLAYER_BULLET = 4;
     private static int cur_bullets = 0; // keep track of all active enemy bullets
-    private static final int ENEMY_FIRE_RATE = 1000;
+    private static final double ENEMY_FIRE_RATE = 0.25;
     private static final double ENEMY_BULLET_SPEED = 2.0;
     private static final double PLAYER_BULLET_SPEED = 2.0;
-    private static final int PLAYER_FIRE_RATE = 250;
+    private static final double PLAYER_FIRE_RATE = 0.5;
     private static int player_cur_bullets = 0; // keep track of active player bullets
 
     private static double INCREASE_SPEED = 0.05; // increase of speed when one alien is killed
@@ -254,7 +256,7 @@ public class Gameplay {
                 alien_move = DIR.LEFT;
                 // fire bullet
                 Random rand = new Random();
-                set_bullet(enemies.get(rand.nextInt(50)));
+                set_bullet();
             }
         } else { // aliens moving to the left
             // 0th element is the left most alien
@@ -274,7 +276,7 @@ public class Gameplay {
                 alien_move = DIR.RIGHT;
                 // fire bullet
                 Random rand = new Random();
-                set_bullet(enemies.get(rand.nextInt(50)));
+                set_bullet();
             }
         }
     }
@@ -411,11 +413,16 @@ public class Gameplay {
     }
 
     // set bullet if there there are less than 4 bullets on screen
-    public static void set_bullet (Enemy e) {
+    public static void set_bullet () {
+        Random rand = new Random();
+        int index = rand.nextInt(50);
+        Enemy e = enemies.get(index);
         if (e.killed) { return; }
-        if (cur_bullets < 4) {
+        int cur_time = LocalDateTime.now().toLocalTime().toSecondOfDay();
+        if (cur_time - alien_last_fire_time > ENEMY_FIRE_RATE && cur_bullets < 4) {
             for (int i = 0; i < MAX_ENEMY_BULLET; i++) {
                 if (!e_bullets.get(i).in_use) {
+                    alien_last_fire_time = cur_time;
                     e_bullets.get(i).init_bullet(e);
                     break;
                 }
@@ -426,9 +433,11 @@ public class Gameplay {
 
     // player fires bullet
     public static void fire_bullet() {
-        if (player_cur_bullets < MAX_PLAYER_BULLET) {
+        int cur_time = LocalDateTime.now().toLocalTime().toSecondOfDay();
+        if (fire && player_cur_bullets < MAX_PLAYER_BULLET && cur_time - player_last_fire_time > PLAYER_FIRE_RATE) {
             for (int i = 0; i < MAX_PLAYER_BULLET; i++) {
                 if (!p_bullets.get(i).in_use) {
+                    player_last_fire_time = cur_time;
                     p_bullets.get(i).init_bullet(player);
                     player_cur_bullets++;
                     sound_shoot.seek(Duration.ZERO);
@@ -471,11 +480,6 @@ public class Gameplay {
         score_board = score_data;
         LEVEL = start_level;
 
-      /*  // set up audio
-        sound_enemy_killed.setCycleCount(MediaPlayer.INDEFINITE);
-        sound_explosion.setCycleCount(MediaPlayer.INDEFINITE);
-        sound_shoot.setCycleCount(MediaPlayer.INDEFINITE); */
-
         if (LEVEL == 1) {
             ENEMY_SPEED = LV1_ENEMY_SPEED;
         } else if (LEVEL == 2) {
@@ -516,6 +520,8 @@ public class Gameplay {
                 } else {
                     move_enemy();
                     move_player();
+                    fire_bullet();
+                    set_bullet();
                     move_bullets();
                     check_enemy_bullet_collision();
                     check_player_bullet_collision();
@@ -544,31 +550,6 @@ public class Gameplay {
             player_dir = DIR.NONE;
             fire = false;
         });
-
-        // timer for player fire
-        Timer player_t = new Timer();
-        player_t.schedule (new TimerTask() {
-            @Override
-            public void run() {
-                if (!game_won && !game_over && fire) {
-                    fire_bullet();
-                }
-            }
-        }, 0, PLAYER_FIRE_RATE);
-
-        // timer for spawning enemy bullets
-        Timer t = new Timer();
-        t.schedule (new TimerTask() {
-            @Override
-            public void run() {
-                if (!game_won && !game_over) {
-                    // randomly choose an enemy
-                    Random rand = new Random();
-                    int index = rand.nextInt(50);
-                    set_bullet (enemies.get(index));
-                }
-            }
-        }, 0, ENEMY_FIRE_RATE);
 
         timer.start();
         cur_stage.setScene(game_scene);

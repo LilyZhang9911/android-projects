@@ -12,6 +12,4 @@ Gameplay.java
  Gameplay
  Gameplay$1
  Gameplay$2
- Gameplay$3
- Gameplay$4
  Gameplay$DIR
