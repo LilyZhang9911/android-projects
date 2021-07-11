@@ -1,8 +1,6 @@
-Ragdoll.java
- Ragdoll
 BodyPart.java
  BodyPart
- BodyPart$1
- BodyPart$2
- BodyPart$3
- BodyPart$STATE
+ BodyPart$PART
+ BodyPart$ROTATE_DIR
+Ragdoll.java
+ Ragdoll
