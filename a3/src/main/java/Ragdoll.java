@@ -24,7 +24,7 @@ import java.util.Scanner;
 
 public class Ragdoll extends Application{
     final int screen_width = 1024;
-    final int screen_height = 1280;
+    final int screen_height = 1024;
     double prev_x, prev_y;
     BodyPart root = null;
     Canvas canvas;
