@@ -215,12 +215,10 @@ public class Ragdoll extends Application{
 
         save.setOnAction(event -> {
             FileChooser fileChooser = new FileChooser();
-            File file = fileChooser.showOpenDialog(stage);
-            //System.out.println("file is " + file );
+            File file = fileChooser.showSaveDialog(stage);
             try {
                 FileWriter writer = new FileWriter(file);
                 root.save(writer);
-                System.out.println("save writer");
                 writer.close();
             } catch (IOException e) {
                 e.printStackTrace();
