@@ -17,8 +17,13 @@ public class BodyPart extends ImageView {
     private static double LOWER_ARM_THETA_RIGHT_BOUND = 225;
     private static double HAND_THETA_LEFT_BOUND = 35; // also used for feet with 35 degree limit
     private static double HAND_THETA_RIGHT_BOUND = 325;
-    private static double LEG_THETA_LEFT_BOUND =90;
-    private static double LEG_THETA_RIGHT_BOUND = 270;
+    private static double LEG_THETA_LEFT_BOUND =85;
+    private static double LEG_THETA_RIGHT_BOUND = 265;
+
+    private static double LEFT_UPPER_LEG_HEIGHT  = 132;
+    private static double RIGHT_UPPER_LEG_HEIGHT  = 118;
+    private static double LEFT_LOWER_LEG_HEIGHT  = 70;
+    private static double RIGHT_LOWER_LEG_HEIGHT  = 78;
 
     // note upper arm has no limit
     private double rotation_pivot_x, rotation_pivot_y;
@@ -32,9 +37,11 @@ public class BodyPart extends ImageView {
     private Affine matrix;
     private Affine translate_matrix;
     private Affine rotate_matrix;
+    private Affine scale_matrix;
     BodyPart parent;
     protected Vector<BodyPart> children;
     double total_theta;
+    double scale_factor;
     public BodyPart(Image i, double x, double y, PART part, String name) {
         imgview = new ImageView(i);
         img = i;
@@ -47,16 +54,15 @@ public class BodyPart extends ImageView {
         total_theta = 0;
         translate_matrix = new Affine();
         translate_matrix.prependTranslation(x, y);
+        scale_matrix = new Affine();
         rotate_matrix = new Affine();
         matrix = new Affine();
+        scale_factor = 1.0;
 
         if (part == PART.HEAD) {
             rotation_pivot_x = 0; // pivot is image size / 2 for head
             rotation_pivot_y = 0;
         }
-        //rotate_matrix.prependRotation(90);
-
-        update_matrix();
     }
 
     public BodyPart(Image i, double x, double y, PART part, String name, double pivot_x, double pivot_y) {
@@ -72,10 +78,11 @@ public class BodyPart extends ImageView {
         translate_matrix = new Affine();
         translate_matrix.prependTranslation(x, y);
         rotate_matrix = new Affine();
+        scale_matrix = new Affine();
         matrix = new Affine();
         rotation_pivot_x = pivot_x; // pivot is image size / 2 for head
         rotation_pivot_y = pivot_y;
-        update_matrix();
+        scale_factor = 1.0;
     }
 
     public void add_children (BodyPart c) {
@@ -83,16 +90,7 @@ public class BodyPart extends ImageView {
         c.parent = this;
     }
 
-    // combines translate and rotate
-    public void update_matrix() {
-        matrix.setToIdentity(); // reset
-        // apply in order translate then rotate
-        matrix.append(rotate_matrix);
-        matrix.append(translate_matrix);
-    }
-
     public void draw (GraphicsContext gc) {
-        //System.out.println("drawing "  + name);
         Affine oldMatrix = gc.getTransform();
         gc.setTransform(getFullMatrix());
         gc.drawImage(img, 0, 0);
@@ -107,19 +105,16 @@ public class BodyPart extends ImageView {
         Affine result = new Affine();
         // append all translations then rotations
         Affine translate = getFullTranslateMatrix();
+        Affine scale = getFullScaleMatrix();
         Affine rotate = getFullRotateMatrix();
+
         result.append(rotate);
         result.append(translate);
-
+        if (cur_part != PART.FOOT) { // feet do no scale
+            result.append(scale);
+        }
         return result;
     }
-
-    /*
-    public Affine getLocalMatrix(){
-        update_rotate();
-        update_matrix();
-        return matrix;
-    } */
 
     public Affine getFullTranslateMatrix() {
         Affine fullMatrix = getLocalTranslateMatrix().clone();
@@ -133,6 +128,23 @@ public class BodyPart extends ImageView {
         return translate_matrix;
     }
 
+    private void update_rotate() {
+        Affine fullMatrix = getFullTranslateMatrix();
+        Affine inverse = new Affine();
+        try {
+            inverse = fullMatrix.createInverse();
+        } catch (NonInvertibleTransformException e) {
+            e.printStackTrace();
+        }
+        rotate_matrix.setToIdentity();
+        rotate_matrix.prepend(inverse);
+        rotate_matrix.prependTranslation(-rotation_pivot_x, -rotation_pivot_y); // use bottom centre of head as pivot
+        rotate_matrix.prependRotation(total_theta);
+        rotate_matrix.prependTranslation(rotation_pivot_x, rotation_pivot_y);
+        rotate_matrix.prepend(fullMatrix);
+        //update_matrix();
+    }
+
     public Affine getFullRotateMatrix() {
         Affine fullMatrix = getLocalRotateMatrix().clone();
         if (parent != null) {
@@ -142,9 +154,27 @@ public class BodyPart extends ImageView {
     }
 
     public Affine getLocalRotateMatrix() {
-        update_rotate();;
+        update_rotate();
         return rotate_matrix;
     }
+
+    private void update_scale() {
+        scale_matrix.setToIdentity();
+        scale_matrix.prependScale(1, scale_factor);
+    }
+
+    public Affine getLocalScaleMatrix() {
+        update_scale();
+        return scale_matrix;
+    }
+    public Affine getFullScaleMatrix() {
+        Affine fullMatrix = getLocalScaleMatrix().clone();
+        if (parent != null) {
+            fullMatrix.prepend(parent.getFullScaleMatrix());
+        }
+        return fullMatrix;
+    }
+
 
     protected BodyPart hitTest (double x, double y) {
         Point2D pointAtOrigin = new Point2D(0, 0);
@@ -165,6 +195,7 @@ public class BodyPart extends ImageView {
         return null;
     }
 
+    // return value used to check when to stop scaling
     public void process_move (double dx, double dy, double theta, ROTATE_DIR x_dir, ROTATE_DIR y_dir) {
         if (cur_part == PART.BODY) {
             translate(dx, dy);
@@ -173,7 +204,7 @@ public class BodyPart extends ImageView {
         } else if (cur_part == PART.UPPER_ARM || cur_part == PART.LOWER_ARM ||
                 cur_part == PART.HAND || cur_part == PART.UPPER_LEG ||
                 cur_part == PART.LOWER_LEG || cur_part == PART.FOOT) {
-            rotate_arm (theta, x_dir, y_dir);
+            rotate_arm_leg (theta, x_dir, y_dir);
         }
     }
 
@@ -181,21 +212,46 @@ public class BodyPart extends ImageView {
         translate_matrix.prependTranslation(dx, dy);
     }
 
-    private void update_rotate() {
-        Affine fullMatrix = getFullTranslateMatrix();
-        Affine inverse = new Affine();
-        try {
-            inverse = fullMatrix.createInverse();
-        } catch (NonInvertibleTransformException e) {
-            e.printStackTrace();
+    // return false when it can no longer be scaled
+    public Boolean scale (ROTATE_DIR dir) {
+        if ((scale_factor >= 1.5 && dir == ROTATE_DIR.DOWN) ||
+                (scale_factor <= 0.5 && dir == ROTATE_DIR.UP)) {
+            return false;
         }
-        rotate_matrix.setToIdentity();
-        rotate_matrix.prepend(inverse);
-        rotate_matrix.prependTranslation(-rotation_pivot_x, -rotation_pivot_y); // use bottom centre of head as pivot
-        rotate_matrix.prependRotation(total_theta);
-        rotate_matrix.prependTranslation(rotation_pivot_x, rotation_pivot_y);
-        rotate_matrix.prepend(fullMatrix);
-        update_matrix();
+        if (cur_part == PART.UPPER_LEG) {
+            double translate_height_lower_leg, translate_height_foot;
+            if (name == "left upper leg") {
+                translate_height_lower_leg = LEFT_UPPER_LEG_HEIGHT;
+                translate_height_foot = LEFT_LOWER_LEG_HEIGHT;
+            } else  {// name == "right upper leg"
+                translate_height_lower_leg = RIGHT_UPPER_LEG_HEIGHT;
+                translate_height_foot = RIGHT_LOWER_LEG_HEIGHT;
+            }
+            if (dir == ROTATE_DIR.UP) {
+                scale_factor -= 0.01;
+                children.get(0).translate(0, -translate_height_lower_leg * 0.01); // move legs
+                children.get(0).children.get(0).translate(0, -translate_height_foot * 0.01); // move feet
+            } else {
+                scale_factor += 0.01;
+                children.get(0).translate(0, translate_height_lower_leg * 0.01);
+                children.get(0).children.get(0).translate(0, translate_height_foot * 0.01);
+            }
+        } else if (cur_part == PART.LOWER_LEG) {
+            double translate_height_lower_leg;
+            if (name == "left upper leg") {
+                translate_height_lower_leg = LEFT_LOWER_LEG_HEIGHT;
+            } else  {// name == "right upper leg"
+                translate_height_lower_leg = RIGHT_LOWER_LEG_HEIGHT;
+            }
+            if (dir == ROTATE_DIR.UP) {
+                scale_factor -= 0.01;
+                children.get(0).translate(0, -translate_height_lower_leg * 0.01); // move legs
+            } else {
+                scale_factor += 0.01;
+                children.get(0).translate(0, translate_height_lower_leg * 0.01);
+            }
+        }
+        return true;
     }
 
     private void rotate_head (double theta, ROTATE_DIR dir) {
@@ -220,7 +276,7 @@ public class BodyPart extends ImageView {
         }
     }
 
-    private void rotate_arm (double theta, ROTATE_DIR x_dir, ROTATE_DIR y_dir) {
+    private void rotate_arm_leg (double theta, ROTATE_DIR x_dir, ROTATE_DIR y_dir) {
         double parent_theta = 0;
          if (cur_part == PART.LOWER_ARM) {
              parent_theta = parent.total_theta;
@@ -233,7 +289,6 @@ public class BodyPart extends ImageView {
          }
 
         theta = Math.abs(theta);
-        //System.out.println("theta is " + theta);
         int case_type = 0; // determine type of rotation
         ROTATE_DIR total_dir;
         if (x_dir == ROTATE_DIR.LEFT && y_dir == ROTATE_DIR.DOWN) {
@@ -327,8 +382,9 @@ public class BodyPart extends ImageView {
         total_theta = 0;
         translate_matrix.setToIdentity();
         translate_matrix.prependTranslation(initial_x, initial_y);
+        scale_factor = 1;
+        scale_matrix.setToIdentity();
         rotate_matrix.setToIdentity();
-        update_matrix();
         for (BodyPart bp: children) {
             bp.reset();
         }

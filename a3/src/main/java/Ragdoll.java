@@ -1,14 +1,21 @@
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
 import javafx.scene.image.ImageView;
 
@@ -22,6 +29,9 @@ public class Ragdoll extends Application{
     BodyPart root = null;
     Canvas canvas;
     BodyPart selected = null;
+    Boolean scale_on = false;
+    Boolean ctrl_pressed = false, Q_pressed = false, R_pressed = false;
+
 
     BodyPart init_robin (Image i_head, Image i_body, Image i_lua, Image i_lla, Image i_lh,
                      Image i_rua, Image i_rla, Image i_rh,
@@ -73,7 +83,6 @@ public class Ragdoll extends Application{
         body.add_children(rul);
         body.add_children(lul);
 
-
         body.add_children(head);
 
         lua.add_children(lla);
@@ -95,24 +104,47 @@ public class Ragdoll extends Application{
             BodyPart hit = root.hitTest(x, y);
             if (hit != null) {
                 selected = hit;
-                //System.out.println("hit " + selected.name);
                 prev_x = event.getX();
                 prev_y = event.getY();
             }
         });
 
-      /*  canvas.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
+       canvas.addEventFilter(MouseEvent.MOUSE_CLICKED, event -> {
             double x = event.getX();
             double y = event.getY();
             BodyPart hit = root.hitTest(x, y);
             if (hit != null) {
                 selected = hit;
-                System.out.println("clicked on " + selected.name);
+                prev_x = event.getX();
+                prev_y = event.getY();
+
+                if (selected.cur_part == BodyPart.PART.UPPER_LEG  ||
+                        selected.cur_part == BodyPart.PART.LOWER_LEG) {
+                    scale_on = true;
+                } else {
+                    selected = null;
+                }
+            }
+        });
+
+        canvas.addEventFilter(MouseEvent.MOUSE_MOVED, event -> {
+
+            // keep moving until it hits range
+            BodyPart.ROTATE_DIR y_dir;
+            if (scale_on && selected != null) {
+                if (prev_y > event.getY()) {
+                    y_dir = BodyPart.ROTATE_DIR.UP;
+                } else {
+                    y_dir = BodyPart.ROTATE_DIR.DOWN;
+                }
+                if (selected.cur_part == BodyPart.PART.UPPER_LEG || selected.cur_part == BodyPart.PART.LOWER_LEG) {
+                    scale_on = selected.scale(y_dir);
+                    draw (canvas, root); // draw in new position
+                }
                 prev_x = event.getX();
                 prev_y = event.getY();
             }
-        }); */
-
+        });
         canvas.addEventFilter(MouseEvent.MOUSE_DRAGGED, event -> {
             if (selected != null) {
                 double e_x = event.getX();
@@ -132,7 +164,6 @@ public class Ragdoll extends Application{
                 } else {
                     y_dir = BodyPart.ROTATE_DIR.DOWN;
                 }
-
                 double theta = Math.atan(distance);
                 selected.process_move(dx, dy, theta, x_dir, y_dir);
             }
@@ -152,19 +183,6 @@ public class Ragdoll extends Application{
     public void start(Stage stage) {
         stage.setResizable(false);
         stage.setTitle("Ragdoll");
-
-        ToggleButton reset = new ToggleButton("Reset");
-        reset.setOnAction(event -> {
-            if (root != null) {
-                root.reset();
-                draw (canvas, root); // draw in new position
-            }
-        });
-
-        ToggleButton quit = new ToggleButton("Quit");
-        quit.setOnAction(event -> {
-            System.exit(0);
-        });
 
         Image robin_body = new Image (getClass().getResourceAsStream("Christopher Robin/body.png"));
         Image robin_head = new Image (getClass().getResourceAsStream("Christopher Robin/head.png"));
@@ -191,10 +209,62 @@ public class Ragdoll extends Application{
         canvas = robin_canvas;
 
         init_robin_canvas_manip(robin_canvas, robin_root);
-        Scene scene = new Scene (new VBox(new HBox(quit, reset), robin_canvas));
+
+        // menus
+        MenuBar menubar = new MenuBar();
+        Menu file_menu = new Menu("File");
+        MenuItem reset = new MenuItem("Reset(Ctrl-R)");
+        SeparatorMenuItem sep = new SeparatorMenuItem();
+        MenuItem quit = new MenuItem ("Quit(Ctrl-Q)");
+        file_menu.getItems().addAll(reset, sep, quit);
+
+        reset.setOnAction(event -> {
+            if (root != null) {
+                root.reset();
+                draw (canvas, root); // draw in new position
+            }
+        });
+        quit.setOnAction(event -> {
+            System.exit(0);
+        });
+
+        menubar.getMenus().add(file_menu);
+        BorderPane p = new BorderPane(robin_canvas);
+        p.setTop(menubar);
+        Scene scene = new Scene (p);
+
+        // add keyboard shortcuts ctrl-Q and ctrl-R
+        scene.setOnKeyPressed(event -> {
+            if (event.getCode() == KeyCode.CONTROL) {
+                ctrl_pressed = true;
+            } else if (event.getCode() == KeyCode.Q) {
+                Q_pressed = true;
+            } else if (event.getCode() == KeyCode.R) {
+                R_pressed = true;
+            }
+            if (ctrl_pressed && R_pressed) {
+                root.reset();
+                draw(canvas, root);
+                ctrl_pressed = false;
+                R_pressed = false;
+            }  else if (ctrl_pressed && Q_pressed) {
+                draw(canvas, root);
+                ctrl_pressed = false;
+                Q_pressed = false;
+                System.exit(0);
+            }
+        });
+        scene.setOnKeyReleased(event -> {
+            if (event.getCode() == KeyCode.CONTROL) {
+                ctrl_pressed = false;
+            } else if (event.getCode() == KeyCode.Q) {
+                Q_pressed = false;
+            } else if (event.getCode() == KeyCode.R) {
+                R_pressed = false;
+            }
+        });
 
         draw(robin_canvas, robin_root);
-
         stage.setScene(scene);
         stage.show();
     }
