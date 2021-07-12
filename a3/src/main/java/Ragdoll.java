@@ -5,22 +5,22 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.SeparatorMenuItem;
-import javafx.scene.control.ToggleButton;
 import javafx.scene.image.Image;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.text.Text;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
 import javafx.scene.image.ImageView;
 
-import javax.swing.plaf.basic.BasicBorders;
-import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.util.Scanner;
 
 public class Ragdoll extends Application{
     final int screen_width = 1024;
@@ -36,28 +36,7 @@ public class Ragdoll extends Application{
     BodyPart init_robin (Image i_head, Image i_body, Image i_lua, Image i_lla, Image i_lh,
                      Image i_rua, Image i_rla, Image i_rh,
                      Image i_lul, Image i_lll, Image i_lf,
-                     Image i_rul, Image i_rll, Image i_rf
-                     //Pane robin_pane
-                     ) {
-       /* BodyPart body = new BodyPart(i_body, 425, 400, BodyPart.PART.BODY, "body");
-        BodyPart head = new BodyPart(i_head, 410, 240, BodyPart.PART.HEAD,  "head");
-
-        BodyPart lua = new BodyPart(i_lua, 405, 410, BodyPart.PART.HEAD,  "left upper arm");
-        BodyPart lla = new BodyPart(i_lla, 354, 488, BodyPart.PART.HEAD,  "left lower arm");
-        BodyPart lh = new BodyPart(i_lh, 280, 487, BodyPart.PART.HEAD,  "left hand");
-
-        BodyPart rua = new BodyPart(i_rua, 405, 420, BodyPart.PART.HEAD,  "right upper arm");
-        BodyPart rla = new BodyPart(i_rla, 390, 533, BodyPart.PART.HEAD,  "right lower arm");
-        BodyPart rh = new BodyPart(i_rh, 396, 605, BodyPart.PART.HEAD,  "right hand");
-
-        BodyPart lul = new BodyPart(i_lul, 405, 593, BodyPart.PART.HEAD,  "left upper leg");
-        BodyPart lll = new BodyPart(i_lll, 430, 723, BodyPart.PART.HEAD,  "left lower leg");
-        BodyPart lf = new BodyPart(i_lf, 400, 790, BodyPart.PART.HEAD,  "left foot");
-
-        BodyPart rul = new BodyPart(i_rul, 490, 608, BodyPart.PART.HEAD,  "right upper leg");
-        BodyPart rll = new BodyPart(i_rll, 492, 725, BodyPart.PART.HEAD,  "right lower leg");
-        BodyPart rf = new BodyPart(i_rf, 500, 790, BodyPart.PART.HEAD,  "right foot");
-        */
+                     Image i_rul, Image i_rll, Image i_rf) {
         BodyPart body = new BodyPart(i_body, 425, 400, BodyPart.PART.BODY, "body");
         BodyPart head = new BodyPart(i_head, -15, -160, BodyPart.PART.HEAD,  "head", 87, 162);
 
@@ -128,7 +107,6 @@ public class Ragdoll extends Application{
         });
 
         canvas.addEventFilter(MouseEvent.MOUSE_MOVED, event -> {
-
             // keep moving until it hits range
             BodyPart.ROTATE_DIR y_dir;
             if (scale_on && selected != null) {
@@ -224,11 +202,45 @@ public class Ragdoll extends Application{
                 draw (canvas, root); // draw in new position
             }
         });
+
         quit.setOnAction(event -> {
             System.exit(0);
         });
 
-        menubar.getMenus().add(file_menu);
+        Menu save_load_menu = new Menu ("Save & Load");
+        MenuItem save = new MenuItem ("Save");
+        SeparatorMenuItem sep2 = new SeparatorMenuItem();
+        MenuItem load = new MenuItem("Load");
+        save_load_menu.getItems().addAll(save, sep2, load);
+
+        save.setOnAction(event -> {
+            FileChooser fileChooser = new FileChooser();
+            File file = fileChooser.showOpenDialog(stage);
+            //System.out.println("file is " + file );
+            try {
+                FileWriter writer = new FileWriter(file);
+                root.save(writer);
+                System.out.println("save writer");
+                writer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        });
+
+        load.setOnAction(event -> {
+            FileChooser fileChooser = new FileChooser();
+            File file = fileChooser.showOpenDialog(stage);
+            try {
+                Scanner reader = new Scanner(file);
+                root.load(reader);
+                draw(canvas, root);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            }
+        });
+
+
+        menubar.getMenus().addAll(file_menu, save_load_menu);
         BorderPane p = new BorderPane(robin_canvas);
         p.setTop(menubar);
         Scene scene = new Scene (p);

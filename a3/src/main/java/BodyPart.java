@@ -8,6 +8,9 @@ import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Affine;
 import javafx.scene.transform.NonInvertibleTransformException;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Scanner;
 import java.util.Vector;
 
 
@@ -387,6 +390,34 @@ public class BodyPart extends ImageView {
         rotate_matrix.setToIdentity();
         for (BodyPart bp: children) {
             bp.reset();
+        }
+    }
+    public void save (FileWriter writer) {
+        double tx = translate_matrix.getTx();
+        double ty = translate_matrix.getTy();
+        //String row = name + Double.toString(tx) + " " + Double.toString(ty) + " " + total_theta + " " + scale_factor + "\n";
+        try {
+            writer.write(Double.toString(tx) + "\t");
+            writer.write(Double.toString(ty) + "\t");
+            writer.write(Double.toString(total_theta) + "\t");
+            writer.write(Double.toString(scale_factor) + "\t");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        for (BodyPart bp: children) {
+            bp.save (writer);
+        }
+    }
+
+    public void load (Scanner reader) {
+        double tx = reader.nextDouble();
+        double ty = reader.nextDouble();
+        translate_matrix.setToIdentity();
+        translate_matrix.prependTranslation(tx, ty);
+        total_theta = reader.nextDouble();
+        scale_factor = reader.nextDouble();
+        for (BodyPart bp: children) {
+            bp.load (reader);
         }
     }
 
