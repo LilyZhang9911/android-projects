@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        tools:context=".MainActivity">
+
+    <LinearLayout
+            android:id="@+id/topBar"
+            android:layout_width="match_parent"
+            android:layout_height="30dp"
+            android:orientation="horizontal"
+            android:gravity="right">
+        <LinearLayout
+                android:id="@+id/undo_redo"
+                android:layout_width="780dp"
+                android:layout_height="30dp"
+                android:orientation="horizontal"
+                android:gravity="left">
+            <Button
+                android:id="@+id/undo"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="@drawable/undo"/>
+            <Button
+                    android:id="@+id/redo"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:background="@drawable/redo"/>
+        </LinearLayout>
+        <Button
+                android:id="@+id/cursor"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="@drawable/custom_cursor_button"/>
+        <Button
+                android:id="@+id/pen"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="@drawable/custom_pen_button"/>
+        <Button
+                android:id="@+id/highlighter"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="@drawable/customer_highlighter_button" />
+        <Button
+                android:id="@+id/eraser"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:background="@drawable/customer_eraser_button"/>
+    </LinearLayout>
+
+    <LinearLayout
+            android:id="@+id/pdf"
+            android:layout_width="match_parent"
+            android:orientation="vertical"
+            android:layout_height="1050dp"
+    />
+
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+        <Button
+                android:id="@+id/prev"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="&lt;"/>
+        <Button
+                android:id="@+id/next"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:text="&gt;" />
+    </LinearLayout>
+
+</LinearLayout>
