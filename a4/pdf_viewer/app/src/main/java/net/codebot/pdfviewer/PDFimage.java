@@ -16,14 +16,10 @@ import java.util.Stack;
 
 @SuppressLint("AppCompatCustomView")
 public class PDFimage extends ImageView {
-
-    final String LOGNAME = "pdf_image";
     final private float MAX_X_OFFSET = 1200;
     final private float MAX_Y_OFFSET = 1200;
 
     private int pageNum = 0;
-    //private GestureDetector gd;
-    private ScaleGestureDetector gd;
 
     // drawing path
     Path path = null;
@@ -34,19 +30,26 @@ public class PDFimage extends ImageView {
     Stack<Operation> redo_stack;
 
     private Boolean pen_enabled, highlighter_enabled, eraser_enabled, cursor_enabled;
-    private Boolean scale_mod = false; // true when scale happens to disable translation because of pinch motion
     private float cursor_x, cursor_y; // start value of the cursors
-    private float translate_x = 0, translate_y = 0, scale = 1;
+    private float translate_x = 0, translate_y = 0;
 
     // image to display
     Bitmap bitmap;
     Paint pen_paint, highlighter_paint;
 
+    float x1, x2, y1, y2, old_x1, old_y1, old_x2, old_y2;
+    float mid_x = -1f, mid_y = -1f, old_mid_x = -1f, old_mid_y = -1f;
+    int p1_id, p1_index, p2_id, p2_index;
+
+    Matrix matrix = new Matrix();
+    Matrix inverse = new Matrix();
+
+    private float[] inverted;
+
 
     // constructor
     public PDFimage(Context context, int total_pages) {
         super(context);
-        gd = new ScaleGestureDetector(context, new ScaleListener());
 
         pen_enabled = false;
         highlighter_enabled = false;
@@ -78,59 +81,146 @@ public class PDFimage extends ImageView {
     // and use that to create a stroke that we can draw
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        //gd.onTouchEvent(event);
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN: // pressed
-                if (cursor_enabled) {
-                    cursor_x = event.getX();
-                    cursor_y = event.getY();
+        switch(event.getPointerCount()) {
+            case 2:
+                p1_id = event.getPointerId(0);
+                p1_index = event.findPointerIndex(p1_id);
+                inverted = new float[] { event.getX(p1_index), event.getY(p1_index)};
+                inverse.mapPoints(inverted);
+
+                if (old_x1 < 0 || old_y1 < 0) {
+                    old_x1 = x1 = inverted[0];
+                    old_y1 = y1 = inverted[1];
+                } else {
+                    old_x1 = x1;
+                    old_y1 = y1;
+                    x1 = inverted[0];
+                    y1 = inverted[1];
                 }
-                path = new Path();
-                path.moveTo(get_original_x(event.getX()), get_original_y(event.getY()));
-                break;
-            case MotionEvent.ACTION_MOVE: // pressed and moving
-                if (cursor_enabled) {
-                    translate_x += event.getX() - cursor_x;
-                    translate_y += event.getY() - cursor_y;
-                    cursor_x = event.getX();
-                    cursor_y = event.getY();
+
+                // point 2
+                p2_id = event.getPointerId(1);
+                p2_index = event.findPointerIndex(p2_id);
+
+                // mapPoints returns values in-place
+                inverted = new float[] { event.getX(p2_index), event.getY(p2_index) };
+                inverse.mapPoints(inverted);
+
+                // first pass, initialize the old == current value
+                if (old_x2 < 0 || old_y2 < 0) {
+                    old_x2 = x2 = inverted[0];
+                    old_y2 = y2 = inverted[1];
+                } else {
+                    old_x2 = x2;
+                    old_y2 = y2;
+                    x2 = inverted[0];
+                    y2 = inverted[1];
                 }
-                path.lineTo(get_original_x(event.getX()), get_original_y(event.getY()));
+
+                // midpoint
+                mid_x = (x1 + x2) / 2;
+                mid_y = (y1 + y2) / 2;
+                old_mid_x = (old_x1 + old_x2) / 2;
+                old_mid_y = (old_y1 + old_y2) / 2;
+
+                // distance
+                float d_old = (float) Math.sqrt(Math.pow((old_x1 - old_x2), 2) + Math.pow((old_y1 - old_y2), 2));
+                float d = (float) Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2));
+
+                // pan and zoom during MOVE event
+                if (event.getAction() == MotionEvent.ACTION_MOVE) {
+                    // pan == translate of midpoint
+                    float dx = mid_x - old_mid_x;
+                    float dy = mid_y - old_mid_y;
+                    matrix.preTranslate(dx, dy);
+
+                    // zoom == change of spread between p1 and p2
+                    float scale = d/d_old;
+                    scale = Math.max(0, scale);
+                    float [] pts = new float[9];
+                    matrix.getValues(pts);
+                    // limit scale factor
+                    if (scale > 1 && pts[0] <= 3) {
+                        matrix.preScale(scale, scale, mid_x, mid_y);
+                    } else if (scale < 1 && pts[0] > 0.5) {
+                        matrix.preScale(scale, scale, mid_x, mid_y);
+                    }
+
+
+
+                // reset on up
+                } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                    old_x1 = -1f;
+                    old_y1 = -1f;
+                    old_x2 = -1f;
+                    old_y2 = -1f;
+                    old_mid_x = -1f;
+                    old_mid_y = -1f;
+                }
                 break;
-            case MotionEvent.ACTION_UP: // released
-                //getPoints(path);
-                if (pen_enabled) {
-                    pen_paths.get(pageNum).add(new DrawPath(path));
-                    add_undo(new Draw(true, pageNum, pen_paths.get(pageNum).size() - 1));
-                } else if (highlighter_enabled) {
-                    highlighter_paths.get(pageNum).add(new DrawPath(path));
-                    add_undo(new Draw(false, pageNum, highlighter_paths.get(pageNum).size() - 1));
-                } else if (eraser_enabled) {
-                    Erase e = new Erase(pageNum);
-                    erase(path, pen_paths.get(pageNum), e, true);
-                    erase(path, highlighter_paths.get(pageNum), e, false);
-                    add_undo(e);
-                } else if (cursor_enabled) {
-                    translate_x += event.getX() - cursor_x;
-                    translate_y += event.getY() - cursor_y;
+
+            case 1:
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN: // pressed
+                        if (cursor_enabled) {
+                            cursor_x = event.getX();
+                            cursor_y = event.getY();
+                        }
+                        path = new Path();
+                        path.moveTo(get_original_x(event.getX()), get_original_y(event.getY()));
+                        break;
+                    case MotionEvent.ACTION_MOVE: // pressed and moving
+                        if (cursor_enabled) {
+                            translate_x += event.getX() - cursor_x;
+                            translate_y += event.getY() - cursor_y;
+                            cursor_x = event.getX();
+                            cursor_y = event.getY();
+                        }
+                        path.lineTo(get_original_x(event.getX()), get_original_y(event.getY()));
+                        break;
+                    case MotionEvent.ACTION_UP: // released
+                        if (pen_enabled) {
+                            pen_paths.get(pageNum).add(new DrawPath(path));
+                            add_undo(new Draw(true, pageNum, pen_paths.get(pageNum).size() - 1));
+                        } else if (highlighter_enabled) {
+                            highlighter_paths.get(pageNum).add(new DrawPath(path));
+                            add_undo(new Draw(false, pageNum, highlighter_paths.get(pageNum).size() - 1));
+                        } else if (eraser_enabled) {
+                            Erase e = new Erase(pageNum);
+                            erase(path, pen_paths.get(pageNum), e, true);
+                            erase(path, highlighter_paths.get(pageNum), e, false);
+                            add_undo(e);
+                        } /*else if (cursor_enabled) {
+                            translate_x += event.getX() - cursor_x;
+                            translate_y += event.getY() - cursor_y;
+                        } */
+                        path = null; // reset path
+                        break;
                 }
                 break;
         }
+
         return true;
     }
 
     public float get_original_x(float x){
-        return x - translate_x;
+        float point [] = new float[] {x, 0};
+        matrix.invert(inverse);
+        inverse.mapPoints(point);
+        return point[0] - translate_x;
     }
 
     public float get_original_y(float y) {
-        return y - translate_y;
+        float point [] = new float[] {0, y};
+        matrix.invert(inverse);
+        inverse.mapPoints(point);
+        return point[1] - translate_y;
     }
 
     public void reset_translate_scale() {
         translate_x = 0;
         translate_y = 0;
-        scale = 1;
+        matrix = new Matrix();
     }
 
     public void add_undo(Operation o) {
@@ -271,22 +361,34 @@ public class PDFimage extends ImageView {
         } else if (translate_y < -MAX_Y_OFFSET) {
             translate_y = -MAX_Y_OFFSET;
         }
-        canvas.scale(scale, scale);
-        canvas.translate(translate_x, translate_y);
+
+        matrix.postTranslate(translate_x, translate_y);
+        canvas.setMatrix(matrix);
+        //canvas.scale(scale, scale);
+        //canvas.translate(translate_x, translate_y);
         // draw background
         if (bitmap != null) {
             this.setImageBitmap(bitmap);
         }
-        // draw pen
-        for (DrawPath path : pen_paths.get(pageNum)) {
-            if (path.is_valid()) {
-                canvas.drawPath(path.get_path(), pen_paint);
-            }
-        }
+        matrix.postTranslate(-translate_x, -translate_y);
+
         // draw highlighter
         for (DrawPath path : highlighter_paths.get(pageNum)) {
             if (path.is_valid()) {
                 canvas.drawPath(path.get_path(), highlighter_paint);
+            }
+        }
+        // draw current path
+        if (highlighter_enabled && path != null) {
+            canvas.drawPath(path, highlighter_paint);
+        } else if (pen_enabled && path != null) {
+            canvas.drawPath(path, pen_paint);
+        }
+
+        // draw pen
+        for (DrawPath path : pen_paths.get(pageNum)) {
+            if (path.is_valid()) {
+                canvas.drawPath(path.get_path(), pen_paint);
             }
         }
         super.onDraw(canvas);
@@ -318,9 +420,10 @@ public class PDFimage extends ImageView {
     private Boolean intersect (Path p1, Path p2) {
         ArrayList<ArrayList<Float>> p1_path = getPoints(p1);
         ArrayList<ArrayList<Float>> p2_path = getPoints(p2);
-        int len = p1_path.size();
-        for (int i = 0; i < len; i++) {
-            for (int j = 0; j < len; j++) {
+        int len1 = p1_path.size();
+        int len2 = p2_path.size();
+        for (int i = 0; i < len1; i++) {
+            for (int j = 0; j < len2; j++) {
                 if ((Math.abs (p2_path.get(i).get(0) - p1_path.get(j).get(0)) <= 15) &&
                         (Math.abs (p2_path.get(i).get(1) - p1_path.get(j).get(1)) <= 15)) {
                     return true;
@@ -345,18 +448,4 @@ public class PDFimage extends ImageView {
             }
         }
     }
-
-    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
-        @Override
-        public boolean onScale(ScaleGestureDetector detector) {
-            if (cursor_enabled) {
-                float mScaleFactor = detector.getScaleFactor();
-                mScaleFactor = Math.max(0.1f, Math.min(mScaleFactor, 5.0f));
-                scale = mScaleFactor;
-                scale_mod = true;
-            }
-            return true;
-        }
-    }
-
 }
